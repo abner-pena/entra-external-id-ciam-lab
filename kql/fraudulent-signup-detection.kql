@@ -1,0 +1,32 @@
+// Detects mass account-creation activity against the Entra External ID
+// self-service sign-up flow: more than 15 account creations from a single
+// IP address or ASN within a one-hour window. This is the signature of
+// scripted mass registration (fraud ring account farming, promo abuse,
+// bot-driven fake account creation) rather than organic customer growth.
+//
+// Source: Entra External ID AuditLogs streamed to Log Analytics.
+// Run interval: every 15 minutes, lookback 1 hour.
+
+AuditLogs
+| where TimeGenerated > ago(1h)
+| where OperationName == "Add user"
+| where Category == "UserManagement"
+| extend IpAddress = tostring(parse_json(tostring(AdditionalDetails))[0].value)
+| where isnotempty(IpAddress)
+| summarize
+    AccountsCreated = dcount(TargetResources_0_id),
+    SampleUPNs = make_set(tostring(TargetResources_0_userPrincipalName), 10)
+    by IpAddress, bin(TimeGenerated, 1h)
+| where AccountsCreated > 15
+| extend Severity = case(
+    AccountsCreated > 100, "Critical",
+    AccountsCreated > 50, "High",
+    "Medium"
+)
+| project TimeGenerated, IpAddress, AccountsCreated, Severity, SampleUPNs
+| order by AccountsCreated desc
+
+// Tuning note: 15 signups/hour/IP is a conservative starting threshold for a
+// lab-scale tenant. In production, baseline against 30 days of real signup
+// volume per IP/ASN before setting the alert threshold, shared office and
+// university networks produce legitimate bursts that look similar at low volume.

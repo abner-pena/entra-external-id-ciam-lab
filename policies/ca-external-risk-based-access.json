@@ -1,0 +1,48 @@
+{
+  "displayName": "CIAM001 - External users: step-up MFA on elevated user risk",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "users": {
+      "includeUsers": [
+        "All"
+      ],
+      "excludeUsers": [
+        "<break-glass-account-object-id>"
+      ]
+    },
+    "applications": {
+      "includeApplications": [
+        "<relying-application-id>"
+      ]
+    },
+    "userRiskLevels": [
+      "high",
+      "medium"
+    ],
+    "locations": {
+      "includeLocations": [
+        "All"
+      ]
+    },
+    "clientAppTypes": [
+      "browser",
+      "mobileAppsAndDesktopClients"
+    ]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": [
+      "mfa"
+    ]
+  },
+  "sessionControls": {
+    "signInFrequency": {
+      "value": 7,
+      "type": "days",
+      "isEnabled": true,
+      "authenticationType": "primaryAndSecondaryAuthentication",
+      "frequencyInterval": "timeBased"
+    }
+  },
+  "notes": "Step up to MFA (email OTP for local accounts, native MFA for federated Google users where supported) only when Identity Protection flags medium or high user risk. Sign-in frequency intentionally left at 7 days on normal-risk sessions; forcing daily re-auth on customers increases churn more than it reduces risk."
+}

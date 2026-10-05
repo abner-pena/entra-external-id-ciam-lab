@@ -1,0 +1,65 @@
+{
+  "id": "B2X_1_signupsignin-ciam-lab",
+  "userFlowType": "signUpOrSignIn",
+  "userFlowTypeVersion": 1,
+  "displayName": "Sign up and sign in (CIAM lab)",
+  "identityProviders": [
+    {
+      "displayName": "Local Account",
+      "identityProviderType": "LocalAccount",
+      "signInType": "emailAddress"
+    },
+    {
+      "displayName": "Google",
+      "identityProviderType": "Google"
+    }
+  ],
+  "apiConnectorConfiguration": {
+    "postFederationSignup": null,
+    "postAttributeCollection": "ValidateUserSignUp"
+  },
+  "attributeCollection": {
+    "collectAtSignUp": [
+      {
+        "attribute": "displayName",
+        "required": true,
+        "userInputType": "textBox"
+      },
+      {
+        "attribute": "country",
+        "required": true,
+        "userInputType": "dropdownSingleSelect"
+      },
+      {
+        "attribute": "extension_marketingConsent",
+        "required": false,
+        "userInputType": "checkbox",
+        "label": "I want to receive product updates by email"
+      }
+    ]
+  },
+  "tokenClaims": {
+    "returnedClaims": [
+      "displayName",
+      "country",
+      "emails",
+      "extension_riskTier",
+      "newUser",
+      "identityProvider"
+    ],
+    "notes": "Kept intentionally minimal. A CIAM token that leaks should not hand an attacker more than the relying app strictly needs to render a session."
+  },
+  "passwordPolicy": {
+    "minimumLength": 10,
+    "requireLowercase": true,
+    "requireUppercase": true,
+    "requireDigit": true,
+    "requireSymbol": false,
+    "disallowCommonPasswords": true
+  },
+  "emailVerification": {
+    "required": true,
+    "otpLength": 6,
+    "otpExpiryMinutes": 10
+  }
+}

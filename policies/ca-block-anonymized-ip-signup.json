@@ -1,0 +1,32 @@
+{
+  "displayName": "CIAM002 - External users: block sign-up and sign-in from anonymized IPs",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "users": {
+      "includeUsers": [
+        "All"
+      ]
+    },
+    "applications": {
+      "includeApplications": [
+        "<relying-application-id>"
+      ]
+    },
+    "locations": {
+      "includeLocations": [
+        "AnonymizedIpAddress"
+      ]
+    },
+    "clientAppTypes": [
+      "browser",
+      "mobileAppsAndDesktopClients"
+    ]
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": [
+      "block"
+    ]
+  },
+  "notes": "Targets the Identity Protection network location category 'Anonymized IP address' (Tor exit nodes and known VPN-for-abuse ranges). Deployed in report-only first and promoted to enforced only after confirming it does not block a meaningful share of legitimate privacy-conscious customers; the false-positive tradeoff is real and worth measuring before enforcing."
+}

@@ -1,0 +1,50 @@
+// Two detections for the CIAM sign-in population, tuned differently from the
+// workforce equivalents elsewhere in this portfolio because the baseline for
+// "normal" is different: customers sign in from many personal devices and
+// networks, so the bar for an alert has to be set against clearer signal.
+//
+// Source: Entra External ID SignInLogs streamed to Log Analytics.
+
+// Detection 1: impossible travel for a customer account.
+// Two sign-ins from countries far enough apart that the travel time between
+// them is physically implausible, within a 2-hour window.
+let ImpossibleTravel =
+    SignInLogs
+    | where TimeGenerated > ago(2h)
+    | where ResultType == 0
+    | extend Country = tostring(LocationDetails.countryOrRegion)
+    | where isnotempty(Country)
+    | summarize Countries = make_set(Country), SignInCount = count(), Times = make_list(TimeGenerated)
+        by UserPrincipalName, bin(TimeGenerated, 2h)
+    | where array_length(Countries) >= 2
+    | project TimeGenerated, UserPrincipalName, Countries, SignInCount, DetectionType = "ImpossibleTravel";
+
+// Detection 2: credential-stuffing pattern against a single account.
+// More than 8 failed password attempts within 15 minutes, followed by either
+// a success (account compromised) or continued failure (attack in progress).
+let CredentialStuffing =
+    SignInLogs
+    | where TimeGenerated > ago(15m)
+    | where AuthenticationRequirement == "singleFactorAuthentication"
+    | summarize
+        FailedAttempts = countif(ResultType != 0),
+        SucceededAfterFailures = countif(ResultType == 0),
+        TotalAttempts = count()
+        by UserPrincipalName, bin(TimeGenerated, 15m)
+    | where FailedAttempts > 8
+    | extend DetectionType = iff(SucceededAfterFailures > 0, "CredentialStuffing-LikelyCompromised", "CredentialStuffing-InProgress")
+    | project TimeGenerated, UserPrincipalName, FailedAttempts, SucceededAfterFailures, TotalAttempts, DetectionType;
+
+ImpossibleTravel
+| project TimeGenerated, UserPrincipalName, DetectionType, Detail = strcat("Countries: ", tostring(Countries), " SignIns: ", tostring(SignInCount))
+| union (
+    CredentialStuffing
+    | project TimeGenerated, UserPrincipalName, DetectionType, Detail = strcat("Failed: ", tostring(FailedAttempts), " Succeeded: ", tostring(SucceededAfterFailures), " of ", tostring(TotalAttempts))
+)
+| order by TimeGenerated desc
+
+// Response note: CredentialStuffing-LikelyCompromised should trigger an
+// automated forced password reset and session revocation, not just an alert.
+// For a customer population, minutes of delay between detection and
+// containment is the difference between one stolen account and a fraud
+// team working a chargeback queue the next morning.
